@@ -4,9 +4,9 @@ import kotlin.math.pow
 fun main() {
     val variables = mutableMapOf<String, Double>()
     val scanner = Scanner(System.`in`)
-
+//asd
     while (true) {
-        print("Введите выражение (или 'exit' для выхода): ")
+        print("Введите выражение, в случае если выражение сложно используйте скобки \"()\" (или 'exit' для выхода): ")
         val input = scanner.nextLine().trim()
 
         if (input.equals("exit", ignoreCase = true)) {
@@ -20,14 +20,14 @@ fun main() {
                 if (parts.size == 2) {
                     val variableName = parts[0]
                     val expression = parts[1]
-                    val result = calculateExpression(expression, variables)
+                    val result = calculateExpression(expression, variables, scanner)
                     variables[variableName] = result
                     println("$variableName = $result")
                 } else {
                     println("Неправильное выражение присваивания.")
                 }
             } else {
-                val result = calculateExpression(input, variables)
+                val result = calculateExpression(input, variables, scanner)
                 println("Результат: $result")
             }
         } catch (e: Exception) {
@@ -36,9 +36,9 @@ fun main() {
     }
 }
 
-fun calculateExpression(expression: String, variables: Map<String, Double>): Double {
+fun calculateExpression(expression: String, variables: MutableMap<String, Double>, scanner: Scanner): Double {
     val tokens = tokenize(expression)
-    val postfix = convertToPostfix(tokens, variables)
+    val postfix = convertToPostfix(tokens, variables, scanner)
     return evaluatePostfix(postfix)
 }
 
@@ -47,7 +47,7 @@ fun tokenize(expression: String): List<String> {
     return regex.findAll(expression).map { it.value }.toList()
 }
 
-fun convertToPostfix(tokens: List<String>, variables: Map<String, Double>): List<String> {
+fun convertToPostfix(tokens: List<String>, variables: MutableMap<String, Double>, scanner: Scanner): List<String> {
     val precedence = mapOf("+" to 1, "-" to 1, "*" to 2, "/" to 2, "^" to 3)
     val output = mutableListOf<String>()
     val operators = Stack<String>()
@@ -56,8 +56,12 @@ fun convertToPostfix(tokens: List<String>, variables: Map<String, Double>): List
         when {
             token.matches(Regex("\\d+(\\.\\d+)?")) -> output.add(token) // число
             token.matches(Regex("[a-zA-Z_]\\w*")) -> {
-                val value = variables[token] ?: throw IllegalArgumentException("Неизвестная переменная: $token")
-                output.add(value.toString()) // переменная
+                if (!variables.containsKey(token)) {
+                    print("Введите значение для переменной $token: ")
+                    val value = scanner.nextLine().toDoubleOrNull() ?: throw IllegalArgumentException("Некорректное значение для переменной $token")
+                    variables[token] = value
+                }
+                output.add(variables[token].toString())
             }
             token == "(" -> operators.push(token) // Открывающая скобка
             token == ")" -> { // Закрывающая скобка
