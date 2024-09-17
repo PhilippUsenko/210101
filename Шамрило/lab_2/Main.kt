@@ -29,7 +29,6 @@ fun main() {
         }
     }
     val discr = b * b - 4 * a * c
-
     if (discr >= 0){
         val x1 = (-b + sqrt(discr)) / (2 * a)
         val x2 = (-b - sqrt(discr)) / (2 * a)
@@ -49,13 +48,35 @@ fun main() {
             val  solution = a * x * x + b * x + c
             if (solution == 0.0){
                 println("Целое решение: $x")
+            }else{
+                println("Целых решений нет");break
             }
         }
-    } else{
+    } else {
         val part1 = -b / (2 * a)
         val part2 = sqrt(-discr) / (2 * a)
         println("Уравнение имеет комплексные решения: ")
         println("x1 = $part1 + ${part2}i")
         println("x1 = $part1 - ${part2}i")
+        var start: Int? = null
+        var end: Int? = null
+        while (start == null || end == null || start > end) {
+            println("Введите диапазон целых решенеий уравнения\nот: ")
+            start = readln().toIntOrNull()
+            println("до: ")
+            end = readln().toIntOrNull()
+            if (start == null || end == null || start > end) {
+                println("Неккоректный ввод")
+            }
+        }
+        for (x in start..end) {
+            val solution = a * x * x + b * x + c
+            if (solution in -0.5..0.5) {
+                println("Приближённое целое решение: $x")
+            }else{
+                println("Приближенных к целому значению решений нет");break
+            }
+        }
+
     }
 }
