@@ -51,6 +51,20 @@ fun handleAssignment(input: String, variables: MutableMap<String, Double>) {
         val expression = parts[1].trim()
 
         if (variable.matches(Regex("[a-zA-Z]+"))) {
+            val variableNames = extractVariables(expression)
+
+            for (varName in variableNames) {
+                if (!variables.containsKey(varName)) {
+                    print("Введите значение для переменной $varName: ")
+                    val value = readLine()?.toDoubleOrNull()
+                    if (value != null) {
+                        variables[varName] = value
+                    } else {
+                        throw Exception("Неверное значение для переменной $varName")
+                    }
+                }
+            }
+
             val value = evaluateExpression(expression, variables)
             variables[variable] = value
             println("Переменная $variable установлена в $value")
@@ -83,7 +97,6 @@ fun tokenizeExpression(expression: String, variables: Map<String, Double>): List
         val trimmedToken = token.trim()
 
         when {
-            // используется для сопоставления чисел
             trimmedToken.matches(Regex("-?\\d+(\\.\\d+)?")) -> {
                 output.add(trimmedToken)
             }
@@ -101,6 +114,7 @@ fun tokenizeExpression(expression: String, variables: Map<String, Double>): List
                 operators.pop()
             }
             precedence.containsKey(trimmedToken) -> {
+                // Если это оператор
                 while (operators.isNotEmpty() && precedence[operators.peek()] ?: 0 > precedence[trimmedToken]!!) {
                     output.add(operators.pop())
                 }
@@ -112,7 +126,7 @@ fun tokenizeExpression(expression: String, variables: Map<String, Double>): List
     while (operators.isNotEmpty()) {
         output.add(operators.pop())
     }
-    println(output)
+
     return output
 }
 
