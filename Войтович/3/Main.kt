@@ -1,91 +1,124 @@
 import java.io.File
 import javax.script.ScriptEngineManager
-
-val engine = ScriptEngineManager().getEngineByExtension("kts")
-    ?: throw IllegalStateException("Kotlin Script Engine не найден.")
-
-fun extractVariables(expression: String): List<String> {
-    val regex = Regex("\\b[a-zA-Z]+\\b(?!\\s*\\()")
-    return regex.findAll(expression).map { it.value }.distinct().toList()
-}
-
-fun createCustomOperation(expression: String, variables: List<String>): (Map<String, Double>) -> Double {
-    return { values: Map<String, Double> ->
-        var formula = expression
-        variables.forEach { variable ->
-            formula = formula.replace("\\b$variable\\b".toRegex(), values[variable].toString())
-        }
-        val enhancedFormula = formula.replace("pow", "Math.pow")
-        engine.eval(enhancedFormula) as Double
-    }
-}
-
-fun calculate(values: Map<String, Double>, operation: (Map<String, Double>) -> Double): Double {
-    return operation(values)
-}
-
-fun saveOperations(operations: Map<String, String>, fileName: String) {
-    File(fileName).printWriter().use { out ->
-        operations.forEach { (name, expression) -> out.println("$name=$expression") }
-    }
-}
-
-fun loadOperations(fileName: String): MutableMap<String, String> {
-    val operations = mutableMapOf<String, String>()
-    if (File(fileName).exists()) {
-        File(fileName).forEachLine { line ->
-            val (name, expression) = line.split("=")
-            operations[name] = expression
-        }
-    }
-    return operations
-}
+import javax.script.ScriptException
 
 fun main() {
-    val operations = loadOperations("operations.txt").toMutableMap().apply {
-        putIfAbsent("add", "a + b")
-        putIfAbsent("subtract", "a - b")
-        putIfAbsent("multiply", "a * b")
-        putIfAbsent("divide", "a / b")
-    }
+    val operations = mutableMapOf<String, String>()
+    val fileName = "operations.txt"
+
+    loadOperations(fileName, operations)
+    addDefaultOperations(operations)
 
     while (true) {
-        try {
-            println("Доступные операции: ${operations.entries.joinToString { "${it.key}: ${it.value}" }}")
-            println("Введите своё выражение или выберите одну из доступных операций:")
-            val operationName = readLine()!!
+        println("\n=== Меню ===")
+        println("1. Добавить новую операцию (add)")
+        println("2. Выполнить операцию (calc)")
+        println("3. Сохранить операции (save)")
+        println("4. Загрузить операции (load)")
+        println("5. Выход (exit)")
+        print("Введите номер команды: ")
 
-            val operationExpression = operations[operationName] ?: run {
-                println("Введите своё выражение с переменными (например, pow(a, b)):")
-                val expression = readLine()!!
-                operations[operationName] = expression
-                expression
+        when (readLine()) {
+            "1", "add" -> {
+                println("Введите название новой операции:")
+                val operationName = readLine() ?: continue
+                println("Введите лямбда-выражение для новой операции (например, {a: Double, b: Double -> a + 2 * b}):")
+                val lambdaExpression = readLine() ?: continue
+                operations[operationName] = lambdaExpression
+                println("Операция $operationName добавлена.")
             }
+            "2", "calc" -> {
+                if (operations.isEmpty()) {
+                    println("Доступные операции отсутствуют.")
+                } else {
+                    println("Доступные операции:")
+                    for (operation in operations.keys) {
+                        println("- $operation")
+                    }
+                }
 
-            val variables = extractVariables(operationExpression)
+                println("Введите название операции:")
+                val operationName = readLine() ?: continue
+                println("Введите два числа:")
+                val a = readLine()?.toDoubleOrNull() ?: continue
+                val b = readLine()?.toDoubleOrNull() ?: continue
 
-            println("Введите значения для переменных: ${variables.joinToString()}")
-            val values = mutableMapOf<String, Double>()
-            variables.forEach { variable ->
-                println("Введите значение для $variable:")
-                values[variable] = readLine()!!.toDouble()
+                if (operationName == "divide" && b == 0.0) {
+                    println("Деление на 0!")
+                } else {
+                    val result = evaluateExpression(operations[operationName], a, b)
+                    println("Результат: $result")
+                }
             }
-
-            val operation = createCustomOperation(operationExpression, variables)
-            val result = calculate(values, operation)
-            println("Результат: $result")
-
-            println("Хотите выполнить еще одну операцию? (да/нет)")
-            val answer = readLine()
-            if (answer?.lowercase() == "нет") {
-                break
+            "3", "save" -> {
+                saveOperations(fileName, operations)
+                println("Операции сохранены в файл $fileName.")
             }
-        } catch (e: Exception) {
-            println("Ошибка: ${e.message}")
-            continue
+            "4", "load" -> {
+                operations.clear()
+                loadOperations(fileName, operations)
+                println("Операции загружены из файла $fileName.")
+                println("Текущие операции после загрузки: $operations")
+            }
+            "5", "exit" -> return
+            else -> println("Неизвестная команда")
         }
     }
+}
 
-    saveOperations(operations, "operations.txt")
-    println("Загруженные операции: ${operations.keys.joinToString()}")
+fun evaluateExpression(expression: String?, a: Double, b: Double): Any? {
+    if (expression == null) {
+        println("Операция не найдена.")
+        return null
+    }
+
+    val engine = ScriptEngineManager().getEngineByExtension("kts")
+
+    return try {
+        val script = "$expression(a = $a, b = $b)"
+        engine.eval("val func = $expression; func($a, $b)")
+    } catch (e: ScriptException) {
+        println("Ошибка при выполнении выражения: ${e.message}")
+        null
+    }
+}
+
+fun saveOperations(fileName: String, operations: Map<String, String>) {
+    File(fileName).bufferedWriter().use { writer ->
+        for ((name, expression) in operations) {
+            writer.write("$name:$expression\n")
+        }
+    }
+}
+
+fun loadOperations(fileName: String, operations: MutableMap<String, String>) {
+    val file = File(fileName)
+
+    if (!file.exists()) {
+        println("Файл $fileName не найден.")
+        return
+    }
+
+    file.forEachLine { line ->
+        val regex = """(\w+):\s*(\{.*\})""".toRegex()
+        val matchResult = regex.find(line)
+
+        if (matchResult != null) {
+            val operationName = matchResult.groups[1]?.value?.trim()
+            val lambdaExpression = matchResult.groups[2]?.value?.trim()
+            if (operationName != null && lambdaExpression != null) {
+                operations[operationName] = lambdaExpression
+                println("Загружена операция: $operationName")
+            }
+        } else {
+            println("Некорректная строка в файле: $line")
+        }
+    }
+}
+
+fun addDefaultOperations(operations: MutableMap<String, String>) {
+    operations["add"] = "{a: Double, b: Double -> a + b}"
+    operations["subtract"] = "{a: Double, b: Double -> a - b}"
+    operations["multiply"] = "{a: Double, b: Double -> a * b}"
+    operations["divide"] = "{a: Double, b: Double -> if (b != 0.0) a / b else Double.NaN}"
 }
