@@ -7,10 +7,10 @@ class Moderator(
 ) : UserRole {
 
     override fun viewContent(): String {
-        return "$username (Age: ${age ?: "not provided"}, Email: $email): Viewing and moderating content as a moderator."
+        return "$username (Возраст: ${age ?: "не указан"}, Электронная почта: $email): Просматривает и модерирует контент как модератор."
     }
 
     override fun editContent(): String {
-        return "$username: Editing limited content as a moderator."
+        return "$username: Редактирует ограниченный контент как модератор."
     }
 }
