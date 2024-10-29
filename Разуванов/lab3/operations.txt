@@ -1,0 +1,6 @@
+add:{a: Double, b: Double -> a + b}
+subtract:{a: Double, b: Double -> a - b}
+multiply:{a: Double, b: Double -> a * b}
+divide:{a: Double, b: Double -> if (b != 0.0) a / b else Double.NaN}
+ds:{a: Double, b: Double -> a + 2 * b}
+rt:{a: Double, b: Double -> a - 2 * 3 + b} 
